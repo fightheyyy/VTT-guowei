@@ -197,4 +197,27 @@ class TimesCLIP(nn.Module):
         }
         
         return total_loss, loss_dict
+    
+    def encode_timeseries(self, x):
+        """
+        编码时间序列为特征向量（用于下游任务，如产量预测）
+        
+        输入:
+            - x: [Batch, Time_Steps, N_Variates] 输入时间序列
+        
+        输出:
+            - features: [Batch, D_Model] 时间序列特征向量
+        """
+        # 1. 语言输入：[Batch, N_Variates, N_Patches, Patch_Length]
+        patches = self.language_preprocessor(x)
+        
+        # 2. 语言模块提取特征
+        # CLS_text: [Batch, N_Variates, D_Model]
+        CLS_text, _ = self.language_module(patches)
+        
+        # 3. 平均池化得到全局特征
+        # features: [Batch, D_Model]
+        features = CLS_text.mean(dim=1)
+        
+        return features
 

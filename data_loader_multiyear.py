@@ -80,7 +80,13 @@ class MultiYearDataset(Dataset):
         self.data = np.array(all_data)  # [n_samples, n_variates, 36]
         self.yields = np.array(all_yields, dtype=np.float32)
         
+        # 归一化数据（按每个波段分别归一化）
+        self.data_mean = self.data.mean(axis=(0, 2), keepdims=True)  # [1, n_variates, 1]
+        self.data_std = self.data.std(axis=(0, 2), keepdims=True) + 1e-8
+        self.data = (self.data - self.data_mean) / self.data_std
+        
         print(f"总样本数: {len(self.data)}")
+        print(f"数据归一化后范围: [{self.data.min():.2f}, {self.data.max():.2f}]")
         print(f"产量范围: [{self.yields.min():.2f}, {self.yields.max():.2f}]")
         
         if mode == 'timeseries':

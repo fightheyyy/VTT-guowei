@@ -1,10 +1,14 @@
 """
-使用多年数据训练的两阶段训练脚本
+使用多年数据训练的两阶段训练脚本（使用HF镜像）
 训练集：2019-2021年
 测试集：2022年
 """
 
 import os
+
+# 设置 HuggingFace 镜像（国内访问）
+os.environ['HF_ENDPOINT'] = 'https://hf-mirror.com'
+
 import torch
 import torch.nn as nn
 from torch.utils.tensorboard import SummaryWriter
