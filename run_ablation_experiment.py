@@ -28,21 +28,29 @@ def run_command(cmd, log_file, description):
     start_time = time.time()
     
     # 执行命令，实时显示输出
-    with open(log_file, 'w', encoding='utf-8') as f:
+    # Windows中文环境使用gbk编码，否则使用utf-8
+    import platform
+    encoding = 'gbk' if platform.system() == 'Windows' else 'utf-8'
+    
+    with open(log_file, 'w', encoding='utf-8', errors='replace') as f:
         process = subprocess.Popen(
             cmd,
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
             text=True,
-            encoding='utf-8',
+            encoding=encoding,
+            errors='replace',  # 忽略无法解码的字符
             bufsize=1,
             shell=True
         )
         
         # 实时打印输出
-        for line in process.stdout:
-            print(line, end='')
-            f.write(line)
+        try:
+            for line in process.stdout:
+                print(line, end='')
+                f.write(line)
+        except UnicodeDecodeError as e:
+            print(f"\n警告: 编码错误，继续执行... {e}")
         
         process.wait()
         exit_code = process.returncode
