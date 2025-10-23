@@ -320,29 +320,29 @@ def main():
         device=device
     )
     
-    # 阶段2: 产量预测
-    yield_model = train_stage2_yield_prediction(
-        train_csv_paths=train_files,
-        test_csv_paths=test_files,
-        timeseries_model=timeseries_model,
-        selected_bands=selected_bands,
-        batch_size=8,
-        epochs=30,
-        lr=1e-4,
-        d_model=256,
-        device=device
-    )
+    # 阶段2: 产量预测（暂时注释，先对比阶段1）
+    # yield_model = train_stage2_yield_prediction(
+    #     train_csv_paths=train_files,
+    #     test_csv_paths=test_files,
+    #     timeseries_model=timeseries_model,
+    #     selected_bands=selected_bands,
+    #     batch_size=8,
+    #     epochs=30,
+    #     lr=1e-4,
+    #     d_model=256,
+    #     device=device
+    # )
     
     print("\n" + "=" * 70)
-    print("两阶段训练全部完成!")
+    print("阶段1训练完成!")
     print("=" * 70)
     print(f"模型保存在: checkpoints/")
     print(f"  - stage1_language_only_best.pth (时间序列补全)")
-    print(f"  - stage2_language_only_best.pth (产量预测)")
+    # print(f"  - stage2_language_only_best.pth (产量预测)")
     print(f"\n日志保存在: logs/")
     print(f"  - logs/stage1_language_only/")
-    print(f"  - logs/stage2_language_only/")
-    print("\n查看训练曲线: tensorboard --logdir=logs")
+    # print(f"  - logs/stage2_language_only/")
+    print("\n查看训练曲线: tensorboard --logdir=logs/stage1_language_only")
 
 
 if __name__ == "__main__":

@@ -122,7 +122,7 @@ def main():
     selected_bands = ['NIR', 'RVI', 'SWIR1', 'blue', 'evi', 'ndvi', 'red']
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
     
-    # 加载测试数据
+    # 加载测试数据（只加载阶段1的数据）
     print("\n加载测试数据...")
     _, test_loader_stage1, n_variates = create_multiyear_dataloaders(
         train_csv_paths=train_files,
@@ -134,13 +134,14 @@ def main():
         batch_size=8
     )
     
-    _, test_loader_stage2, _ = create_multiyear_dataloaders(
-        train_csv_paths=train_files,
-        test_csv_paths=test_files,
-        selected_bands=selected_bands,
-        mode='yield',
-        batch_size=8
-    )
+    # 暂时不加载阶段2数据
+    # _, test_loader_stage2, _ = create_multiyear_dataloaders(
+    #     train_csv_paths=train_files,
+    #     test_csv_paths=test_files,
+    #     selected_bands=selected_bands,
+    #     mode='yield',
+    #     batch_size=8
+    # )
     
     results = {}
     
@@ -201,62 +202,62 @@ def main():
         print("  未找到模型文件: checkpoints/stage1_language_only_best.pth")
         results['stage1_language'] = None
     
-    # ========== 评估阶段2 ==========
-    print("\n" + "=" * 70)
-    print("阶段2：产量预测")
-    print("=" * 70)
+    # ========== 评估阶段2（暂时跳过）==========
+    print("\n暂时跳过阶段2评估，先专注对比阶段1\n")
+    results['stage2_both'] = None
+    results['stage2_language'] = None
     
-    # 双模态版本
-    print("\n[1/2] 评估双模态版本...")
-    if os.path.exists('checkpoints/stage2_yield_best.pth'):
-        model_yield_both = YieldPredictor(
-            n_variates=n_variates,
-            time_steps=36,
-            d_model=256,
-            n_heads=8,
-            n_layers=4,
-            dropout=0.3
-        ).to(device)
-        model_yield_both.load_state_dict(torch.load('checkpoints/stage2_yield_best.pth'))
-        
-        results['stage2_both'] = evaluate_stage2(model_yield_both, test_loader_stage2, device)
-        total_params, trainable_params = count_parameters(model_yield_both)
-        results['stage2_both']['total_params'] = total_params
-        
-        print(f"  MSE Loss: {results['stage2_both']['mse']:.6f}")
-        print(f"  RMSE: {results['stage2_both']['rmse']:.4f}")
-        print(f"  MAE: {results['stage2_both']['mae']:.4f}")
-        print(f"  R² Score: {results['stage2_both']['r2']:.4f}")
-        print(f"  参数量: {total_params:,}")
-    else:
-        print("  未找到模型文件: checkpoints/stage2_yield_best.pth")
-        results['stage2_both'] = None
-    
-    # 语言模态版本
-    print("\n[2/2] 评估语言模态版本...")
-    if os.path.exists('checkpoints/stage2_language_only_best.pth'):
-        model_yield_language = YieldPredictor(
-            n_variates=n_variates,
-            time_steps=36,
-            d_model=256,
-            n_heads=8,
-            n_layers=4,
-            dropout=0.3
-        ).to(device)
-        model_yield_language.load_state_dict(torch.load('checkpoints/stage2_language_only_best.pth'))
-        
-        results['stage2_language'] = evaluate_stage2(model_yield_language, test_loader_stage2, device)
-        total_params, trainable_params = count_parameters(model_yield_language)
-        results['stage2_language']['total_params'] = total_params
-        
-        print(f"  MSE Loss: {results['stage2_language']['mse']:.6f}")
-        print(f"  RMSE: {results['stage2_language']['rmse']:.4f}")
-        print(f"  MAE: {results['stage2_language']['mae']:.4f}")
-        print(f"  R² Score: {results['stage2_language']['r2']:.4f}")
-        print(f"  参数量: {total_params:,}")
-    else:
-        print("  未找到模型文件: checkpoints/stage2_language_only_best.pth")
-        results['stage2_language'] = None
+    # # 双模态版本
+    # print("\n[1/2] 评估双模态版本...")
+    # if os.path.exists('checkpoints/stage2_yield_best.pth'):
+    #     model_yield_both = YieldPredictor(
+    #         n_variates=n_variates,
+    #         time_steps=36,
+    #         d_model=256,
+    #         n_heads=8,
+    #         n_layers=4,
+    #         dropout=0.3
+    #     ).to(device)
+    #     model_yield_both.load_state_dict(torch.load('checkpoints/stage2_yield_best.pth'))
+    #     
+    #     results['stage2_both'] = evaluate_stage2(model_yield_both, test_loader_stage2, device)
+    #     total_params, trainable_params = count_parameters(model_yield_both)
+    #     results['stage2_both']['total_params'] = total_params
+    #     
+    #     print(f"  MSE Loss: {results['stage2_both']['mse']:.6f}")
+    #     print(f"  RMSE: {results['stage2_both']['rmse']:.4f}")
+    #     print(f"  MAE: {results['stage2_both']['mae']:.4f}")
+    #     print(f"  R² Score: {results['stage2_both']['r2']:.4f}")
+    #     print(f"  参数量: {total_params:,}")
+    # else:
+    #     print("  未找到模型文件: checkpoints/stage2_yield_best.pth")
+    #     results['stage2_both'] = None
+    # 
+    # # 语言模态版本
+    # print("\n[2/2] 评估语言模态版本...")
+    # if os.path.exists('checkpoints/stage2_language_only_best.pth'):
+    #     model_yield_language = YieldPredictor(
+    #         n_variates=n_variates,
+    #         time_steps=36,
+    #         d_model=256,
+    #         n_heads=8,
+    #         n_layers=4,
+    #         dropout=0.3
+    #     ).to(device)
+    #     model_yield_language.load_state_dict(torch.load('checkpoints/stage2_language_only_best.pth'))
+    #     
+    #     results['stage2_language'] = evaluate_stage2(model_yield_language, test_loader_stage2, device)
+    #     total_params, trainable_params = count_parameters(model_yield_language)
+    #     results['stage2_language']['total_params'] = total_params
+    #     
+    #     print(f"  MSE Loss: {results['stage2_language']['mse']:.6f}")
+    #     print(f"  RMSE: {results['stage2_language']['rmse']:.4f}")
+    #     print(f"  MAE: {results['stage2_language']['mae']:.4f}")
+    #     print(f"  R² Score: {results['stage2_language']['r2']:.4f}")
+    #     print(f"  参数量: {total_params:,}")
+    # else:
+    #     print("  未找到模型文件: checkpoints/stage2_language_only_best.pth")
+    #     results['stage2_language'] = None
     
     # ========== 对比总结 ==========
     print("\n" + "=" * 70)
@@ -287,17 +288,18 @@ def main():
         else:
             print(f"  结论: ❌ 视觉模态显著提升性能（>10%），建议保留")
     
-    if results['stage2_both'] and results['stage2_language']:
-        print("\n阶段2（产量预测）:")
-        print(f"  指标              双模态          语言模态        差异")
-        print(f"  {'─'*60}")
-        
-        mse_diff = (results['stage2_language']['mse'] - results['stage2_both']['mse']) / results['stage2_both']['mse'] * 100
-        r2_diff = (results['stage2_language']['r2'] - results['stage2_both']['r2']) / results['stage2_both']['r2'] * 100
-        
-        print(f"  MSE Loss:        {results['stage2_both']['mse']:.6f}     {results['stage2_language']['mse']:.6f}     {mse_diff:+.1f}%")
-        print(f"  RMSE:            {results['stage2_both']['rmse']:.4f}       {results['stage2_language']['rmse']:.4f}")
-        print(f"  R² Score:        {results['stage2_both']['r2']:.4f}       {results['stage2_language']['r2']:.4f}       {r2_diff:+.1f}%")
+    # 阶段2对比（暂时跳过）
+    # if results['stage2_both'] and results['stage2_language']:
+    #     print("\n阶段2（产量预测）:")
+    #     print(f"  指标              双模态          语言模态        差异")
+    #     print(f"  {'─'*60}")
+    #     
+    #     mse_diff = (results['stage2_language']['mse'] - results['stage2_both']['mse']) / results['stage2_both']['mse'] * 100
+    #     r2_diff = (results['stage2_language']['r2'] - results['stage2_both']['r2']) / results['stage2_both']['r2'] * 100
+    #     
+    #     print(f"  MSE Loss:        {results['stage2_both']['mse']:.6f}     {results['stage2_language']['mse']:.6f}     {mse_diff:+.1f}%")
+    #     print(f"  RMSE:            {results['stage2_both']['rmse']:.4f}       {results['stage2_language']['rmse']:.4f}")
+    #     print(f"  R² Score:        {results['stage2_both']['r2']:.4f}       {results['stage2_language']['r2']:.4f}       {r2_diff:+.1f}%")
     
     print("\n" + "=" * 70)
     print("分析完成！")
