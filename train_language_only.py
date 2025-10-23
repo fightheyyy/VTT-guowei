@@ -1,7 +1,6 @@
 """
-使用多年数据训练的两阶段训练脚本（使用HF镜像）
-训练集：2019-2021年
-测试集：2022年
+消融实验：只使用语言模态训练
+用于对比视觉模态的作用
 """
 
 import os
@@ -14,7 +13,7 @@ import torch.nn as nn
 from torch.utils.tensorboard import SummaryWriter
 from tqdm import tqdm
 import numpy as np
-from models import TimesCLIP
+from models.timesclip_language_only import TimesCLIPLanguageOnly
 from models.yield_predictor import YieldPredictor
 from data_loader_multiyear import create_multiyear_dataloaders
 
@@ -27,23 +26,21 @@ def train_stage1_timeseries(
     prediction_steps=18,
     batch_size=16,
     epochs=50,
-    lr_vision=1e-5,
+    lr_language=1e-5,
     lr_other=1e-4,
-    lambda_gen=1.0,
-    lambda_align=0.1,
     d_model=256,
     device='cuda',
     save_dir='checkpoints'
 ):
     """
-    阶段1: 训练时间序列补全模型
+    阶段1: 训练时间序列补全模型（只用语言模态）
     """
     print("\n" + "=" * 70)
-    print("阶段1: 训练波段值时间序列补全模型")
+    print("阶段1: 训练波段值时间序列补全模型（语言模态版本）")
     print("=" * 70)
     
     os.makedirs(save_dir, exist_ok=True)
-    os.makedirs('logs/stage1', exist_ok=True)
+    os.makedirs('logs/stage1_language_only', exist_ok=True)
     
     # 加载数据
     train_loader, test_loader, n_variates = create_multiyear_dataloaders(
@@ -56,27 +53,27 @@ def train_stage1_timeseries(
         batch_size=batch_size
     )
     
-    # 初始化模型
-    model = TimesCLIP(
+    # 初始化模型（语言模态版本）
+    model = TimesCLIPLanguageOnly(
         time_steps=lookback,
         n_variates=n_variates,
         prediction_steps=prediction_steps,
-        patch_length=6,  # 对于lookback=18，使用较小的patch
+        patch_length=6,
         stride=3,
         d_model=d_model
     ).to(device)
     
     # 分层学习率
-    vision_params = list(model.vision_module.parameters())
-    other_params = [p for n, p in model.named_parameters() if 'vision_module' not in n]
+    language_params = list(model.language_module.parameters())
+    other_params = [p for n, p in model.named_parameters() if 'language_module' not in n]
     
     optimizer = torch.optim.AdamW([
-        {'params': vision_params, 'lr': lr_vision},
+        {'params': language_params, 'lr': lr_language},
         {'params': other_params, 'lr': lr_other}
     ])
     
     mse_loss = nn.MSELoss()
-    writer = SummaryWriter('logs/stage1')
+    writer = SummaryWriter('logs/stage1_language_only')
     
     best_loss = float('inf')
     
@@ -85,14 +82,17 @@ def train_stage1_timeseries(
     print(f"  波段数: {n_variates}")
     print(f"  Batch Size: {batch_size}")
     print(f"  Epochs: {epochs}")
-    print(f"  学习率 (Vision): {lr_vision}")
+    print(f"  学习率 (Language): {lr_language}")
     print(f"  学习率 (Other): {lr_other}")
+    print(f"  模态: 仅语言模态（无视觉+对比学习）")
+    
+    # 统计参数
+    total_params = sum(p.numel() for p in model.parameters())
+    print(f"  总参数量: {total_params:,}")
     
     for epoch in range(epochs):
         model.train()
         train_loss = 0
-        train_gen_loss = 0
-        train_align_loss = 0
         
         pbar = tqdm(train_loader, desc=f'Epoch {epoch+1}/{epochs}')
         for batch_idx, (x, y_true) in enumerate(pbar):
@@ -101,28 +101,21 @@ def train_stage1_timeseries(
             
             optimizer.zero_grad()
             
-            y_pred, align_loss = model(x)  # [B, n_variates, prediction_steps]
+            # 前向传播（无对比损失）
+            y_pred = model(x)  # [B, n_variates, prediction_steps]
             
-            gen_loss = mse_loss(y_pred, y_true)
-            loss = lambda_gen * gen_loss + lambda_align * align_loss
+            # 只有生成损失
+            loss = mse_loss(y_pred, y_true)
             
             loss.backward()
             torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=0.5)
             optimizer.step()
             
             train_loss += loss.item()
-            train_gen_loss += gen_loss.item()
-            train_align_loss += align_loss.item()
             
-            pbar.set_postfix({
-                'loss': loss.item(),
-                'gen': gen_loss.item(),
-                'align': align_loss.item()
-            })
+            pbar.set_postfix({'loss': loss.item()})
         
         avg_train_loss = train_loss / len(train_loader)
-        avg_gen_loss = train_gen_loss / len(train_loader)
-        avg_align_loss = train_align_loss / len(train_loader)
         
         # 验证
         model.eval()
@@ -132,35 +125,34 @@ def train_stage1_timeseries(
                 x = x.to(device)
                 y_true = y_true.to(device)
                 
-                y_pred, align_loss = model(x)
-                gen_loss = mse_loss(y_pred, y_true)
-                loss = lambda_gen * gen_loss + lambda_align * align_loss
+                y_pred = model(x)
+                loss = mse_loss(y_pred, y_true)
                 val_loss += loss.item()
         
         avg_val_loss = val_loss / len(test_loader)
         
         print(f'\nEpoch {epoch+1}/{epochs}:')
-        print(f'  Train Loss: {avg_train_loss:.6f} (Gen: {avg_gen_loss:.6f}, Align: {avg_align_loss:.6f})')
-        print(f'  Val Loss:   {avg_val_loss:.6f}')
+        print(f'  Train Loss: {avg_train_loss:.6f} (RMSE: {np.sqrt(avg_train_loss):.4f})')
+        print(f'  Val Loss:   {avg_val_loss:.6f} (RMSE: {np.sqrt(avg_val_loss):.4f})')
         
         writer.add_scalar('Loss/train', avg_train_loss, epoch)
         writer.add_scalar('Loss/val', avg_val_loss, epoch)
-        writer.add_scalar('Loss/gen', avg_gen_loss, epoch)
-        writer.add_scalar('Loss/align', avg_align_loss, epoch)
+        writer.add_scalar('RMSE/train', np.sqrt(avg_train_loss), epoch)
+        writer.add_scalar('RMSE/val', np.sqrt(avg_val_loss), epoch)
         
         # 保存最佳模型
         if avg_val_loss < best_loss:
             best_loss = avg_val_loss
-            torch.save(model.state_dict(), os.path.join(save_dir, 'stage1_timeseries_best.pth'))
-            print(f'  保存最佳模型 (Val Loss: {best_loss:.6f})')
+            torch.save(model.state_dict(), os.path.join(save_dir, 'stage1_language_only_best.pth'))
+            print(f'  保存最佳模型 (Val Loss: {best_loss:.6f}, RMSE: {np.sqrt(best_loss):.4f})')
         
         # 定期保存
         if (epoch + 1) % 10 == 0:
             torch.save(model.state_dict(), 
-                      os.path.join(save_dir, f'stage1_epoch_{epoch+1}.pth'))
+                      os.path.join(save_dir, f'stage1_language_only_epoch_{epoch+1}.pth'))
     
     writer.close()
-    print(f"\n阶段1完成! 最佳验证损失: {best_loss:.6f}")
+    print(f"\n阶段1完成! 最佳验证损失: {best_loss:.6f} (RMSE: {np.sqrt(best_loss):.4f})")
     
     return model
 
@@ -184,7 +176,7 @@ def train_stage2_yield_prediction(
     print("阶段2: 训练产量预测模型")
     print("=" * 70)
     
-    os.makedirs('logs/stage2', exist_ok=True)
+    os.makedirs('logs/stage2_language_only', exist_ok=True)
     
     # 加载产量预测数据
     train_loader, test_loader, n_variates = create_multiyear_dataloaders(
@@ -207,7 +199,7 @@ def train_stage2_yield_prediction(
     
     optimizer = torch.optim.AdamW(yield_model.parameters(), lr=lr)
     criterion = nn.MSELoss()
-    writer = SummaryWriter('logs/stage2')
+    writer = SummaryWriter('logs/stage2_language_only')
     
     best_loss = float('inf')
     
@@ -280,13 +272,13 @@ def train_stage2_yield_prediction(
         # 保存最佳模型
         if avg_val_loss < best_loss:
             best_loss = avg_val_loss
-            torch.save(yield_model.state_dict(), os.path.join(save_dir, 'stage2_yield_best.pth'))
+            torch.save(yield_model.state_dict(), os.path.join(save_dir, 'stage2_language_only_best.pth'))
             print(f'  保存最佳模型 (Val Loss: {best_loss:.6f}, R²: {r2:.4f})')
         
         # 定期保存
         if (epoch + 1) % 10 == 0:
             torch.save(yield_model.state_dict(), 
-                      os.path.join(save_dir, f'stage2_epoch_{epoch+1}.pth'))
+                      os.path.join(save_dir, f'stage2_language_only_epoch_{epoch+1}.pth'))
     
     writer.close()
     print(f"\n阶段2完成! 最佳验证损失: {best_loss:.6f}")
@@ -309,6 +301,9 @@ def main():
     
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
     print(f"使用设备: {device}")
+    print("=" * 70)
+    print("消融实验：语言模态版本（无视觉+对比学习）")
+    print("=" * 70)
     
     # 阶段1: 时间序列补全
     timeseries_model = train_stage1_timeseries(
@@ -317,12 +312,10 @@ def main():
         selected_bands=selected_bands,
         lookback=18,
         prediction_steps=18,
-        batch_size=8,  # 1080Ti显存较小，使用较小batch
-        epochs=100,  # 增加训练轮数
-        lr_vision=1e-5,  # 提高学习率加速收敛
-        lr_other=1e-4,   # 提高学习率
-        lambda_gen=1.0,
-        lambda_align=0.2,  # 增加对齐损失权重
+        batch_size=8,
+        epochs=100,
+        lr_language=1e-5,
+        lr_other=1e-4,
         d_model=256,
         device=device
     )
@@ -344,8 +337,12 @@ def main():
     print("两阶段训练全部完成!")
     print("=" * 70)
     print(f"模型保存在: checkpoints/")
-    print(f"  - stage1_timeseries_best.pth (时间序列补全)")
-    print(f"  - stage2_yield_best.pth (产量预测)")
+    print(f"  - stage1_language_only_best.pth (时间序列补全)")
+    print(f"  - stage2_language_only_best.pth (产量预测)")
+    print(f"\n日志保存在: logs/")
+    print(f"  - logs/stage1_language_only/")
+    print(f"  - logs/stage2_language_only/")
+    print("\n查看训练曲线: tensorboard --logdir=logs")
 
 
 if __name__ == "__main__":

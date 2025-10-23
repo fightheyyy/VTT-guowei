@@ -5,6 +5,7 @@ from .alignment import ContrastiveAlignment
 from .variate_selection import VariateSelection, VariateEncoder
 from .generator import Generator
 from .timesclip import TimesCLIP
+from .timesclip_language_only import TimesCLIPLanguageOnly
 from .yield_predictor import YieldPredictor, CombinedYieldPredictor
 
 __all__ = [
@@ -17,6 +18,7 @@ __all__ = [
     'VariateEncoder',
     'Generator',
     'TimesCLIP',
+    'TimesCLIPLanguageOnly',
     'YieldPredictor',
     'CombinedYieldPredictor',
 ]
