@@ -6,6 +6,11 @@ import os
 import torch
 import numpy as np
 from torch.utils.data import DataLoader
+
+# 设置离线模式，避免网络超时
+os.environ['TRANSFORMERS_OFFLINE'] = '1'
+os.environ['HF_DATASETS_OFFLINE'] = '1'
+
 from models import TimesCLIP
 from models.timesclip_language_only import TimesCLIPLanguageOnly
 from models.yield_predictor import YieldPredictor

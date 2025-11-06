@@ -19,8 +19,11 @@ class VisionModule(nn.Module):
         super().__init__()
         self.d_model = d_model
         
-        # 加载预训练的CLIP Vision Encoder
-        self.vision_encoder = CLIPVisionModel.from_pretrained(clip_model_name)
+        # 加载预训练的CLIP Vision Encoder（使用本地缓存，避免网络超时）
+        self.vision_encoder = CLIPVisionModel.from_pretrained(
+            clip_model_name,
+            local_files_only=True
+        )
         
         # 冻结预训练参数
         for param in self.vision_encoder.parameters():

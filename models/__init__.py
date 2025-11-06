@@ -1,25 +1,16 @@
-from .preprocessor import VisualPreprocessor, LanguagePreprocessor
-from .vision_module import VisionModule
-from .language_module import LanguageModule
-from .alignment import ContrastiveAlignment
-from .variate_selection import VariateSelection, VariateEncoder
-from .generator import Generator
+"""
+VTT 模型包
+"""
+
 from .timesclip import TimesCLIP
 from .timesclip_language_only import TimesCLIPLanguageOnly
-from .yield_predictor import YieldPredictor, CombinedYieldPredictor
+from .simple_yield_predictor import SimpleYieldPredictor, LanguageOnlyYieldPredictor
+from .yield_predictor import YieldPredictor
 
 __all__ = [
-    'VisualPreprocessor',
-    'LanguagePreprocessor',
-    'VisionModule',
-    'LanguageModule',
-    'ContrastiveAlignment',
-    'VariateSelection',
-    'VariateEncoder',
-    'Generator',
     'TimesCLIP',
     'TimesCLIPLanguageOnly',
-    'YieldPredictor',
-    'CombinedYieldPredictor',
+    'SimpleYieldPredictor',
+    'LanguageOnlyYieldPredictor',
+    'YieldPredictor'
 ]
-
