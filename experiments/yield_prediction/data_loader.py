@@ -79,5 +79,6 @@ def create_yield_dataloaders(train_csv_paths, test_csv_paths, selected_bands,
     train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
     test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False)
     
-    return train_loader, test_loader, len(selected_bands)
+    # 返回5个值：train_loader, test_loader, n_variates, yield_mean, yield_std
+    return train_loader, test_loader, len(selected_bands), train_dataset.yield_mean, train_dataset.yield_std
 

@@ -15,14 +15,15 @@ class VisionModule(nn.Module):
     输出: CLS_img [Batch, N_Variates, D_Model]
     """
     
-    def __init__(self, d_model=512, clip_model_name="openai/clip-vit-base-patch16"):
+    def __init__(self, d_model=512, clip_model_name="openai/clip-vit-base-patch16", aggregate_variates=False):
         super().__init__()
         self.d_model = d_model
+        self.aggregate_variates = aggregate_variates
         
-        # 加载预训练的CLIP Vision Encoder（使用本地缓存，避免网络超时）
+        # 加载预训练的CLIP Vision Encoder
         self.vision_encoder = CLIPVisionModel.from_pretrained(
             clip_model_name,
-            local_files_only=True
+            local_files_only=False  # 允许在线下载
         )
         
         # 冻结预训练参数
@@ -42,7 +43,8 @@ class VisionModule(nn.Module):
         """
         前向传播
         输入: images [Batch, N_Variates, 3, H, W]
-        输出: CLS_img [Batch, N_Variates, D_Model]
+        输出: CLS_img [Batch, D_Model] 如果aggregate_variates=True
+               或 [Batch, N_Variates, D_Model] 如果aggregate_variates=False
         """
         batch_size, n_variates, c, h, w = images.shape
         
@@ -60,6 +62,10 @@ class VisionModule(nn.Module):
         
         # 重塑回 [Batch, N_Variates, D_Model]
         CLS_img = vision_features.reshape(batch_size, n_variates, self.d_model)
+        
+        # 如果需要聚合变量维度（用于分类任务）
+        if self.aggregate_variates:
+            CLS_img = CLS_img.mean(dim=1)  # [Batch, D_Model]
         
         return CLS_img
 
