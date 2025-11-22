@@ -1,0 +1,17 @@
+{
+  "time_steps": 12,
+  "days": 120,
+  "n_variates": 14,
+  "num_classes": 4,
+  "model_type": "dual",
+  "use_contrastive": true,
+  "contrastive_weight": 0.1,
+  "batch_size": 64,
+  "epochs": 100,
+  "lr": 0.0001,
+  "patience": 15,
+  "focal_gamma": 2.0,
+  "training_time": "20251120_220945",
+  "image_cache": "data/multiscale_image_cache/time_12",
+  "description": "12步真双模态 - 视觉+语言+对比学习，使用预缓存图像，创新点"
+}

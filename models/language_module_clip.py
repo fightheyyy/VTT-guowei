@@ -126,16 +126,18 @@ class LanguageModuleCLIP(nn.Module):
         
         # 通过CLIP Text Encoder
         # 直接调用encoder（transformer层），传入embeddings
-        # 创建causal attention mask（CLIP文本使用causal attention）
-        # 但对于我们的时序任务，使用双向注意力（全1 mask）
+        # 创建attention mask（全1表示全部可见）
+        batch_total, seq_len, _ = embeddings.shape  # batch_total = batch_size * n_variates
         attention_mask = torch.ones(
-            embeddings.shape[0], embeddings.shape[1], 
+            batch_total, seq_len, 
             dtype=torch.long, device=embeddings.device
         )
         
         # 扩展attention_mask维度以匹配multi-head attention
-        # [batch_size, seq_length] -> [batch_size, 1, 1, seq_length]
-        extended_attention_mask = attention_mask[:, None, None, :]
+        # [batch_total, seq_length] -> [batch_total, 1, seq_length, seq_length]
+        extended_attention_mask = attention_mask[:, None, None, :].expand(
+            batch_total, 1, seq_len, seq_len
+        )
         extended_attention_mask = extended_attention_mask.to(dtype=embeddings.dtype)
         extended_attention_mask = (1.0 - extended_attention_mask) * torch.finfo(embeddings.dtype).min
         

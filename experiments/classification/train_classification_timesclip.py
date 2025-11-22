@@ -172,7 +172,7 @@ def plot_confusion_matrix(conf_matrix, save_path, class_names=None):
 
 
 def train_timesclip_classifier(
-    csv_path="data/2018four.csv",
+    csv_path="../../data/2018four.csv",
     time_steps=37,
     n_variates=14,
     model_type="dual",  # "dual" 或 "language_only"
@@ -385,7 +385,7 @@ def train_timesclip_classifier(
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='TimesCLIP分类任务训练')
-    parser.add_argument('--csv_path', type=str, default='data/2018four.csv', help='CSV数据文件路径')
+    parser.add_argument('--csv_path', type=str, default='../../data/2018four.csv', help='CSV数据文件路径')
     parser.add_argument('--model_type', type=str, default='dual', choices=['dual', 'language_only'], 
                         help='模型类型: dual(双模态) 或 language_only(纯语言)')
     parser.add_argument('--batch_size', type=int, default=64, help='批次大小（默认64，开启缓存后可适当增大）')

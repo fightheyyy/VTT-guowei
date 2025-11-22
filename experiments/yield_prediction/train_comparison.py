@@ -25,6 +25,56 @@ from datetime import datetime
 
 from models.simple_yield_predictor import LanguageOnlyYieldPredictor, SimpleYieldPredictor
 from experiments.yield_prediction.data_loader import create_yield_dataloaders
+import glob
+
+
+def _resolve_data_paths():
+    """
+    解析数据文件路径：
+    1) 优先使用 data/2019产量数据.csv 等标准命名
+    2) 若不存在，则回退寻找 extractYYYY_*.csv（支持位于仓库根目录或 data/ 下）
+    """
+    # 首选：标准命名的数据文件
+    train_default = [
+        "data/2019产量数据.csv",
+        "data/2020产量数据.csv",
+        "data/2021产量数据.csv",
+    ]
+    test_default = ["data/2022产量数据.csv"]
+
+    if all(os.path.exists(p) for p in train_default) and all(os.path.exists(p) for p in test_default):
+        return train_default, test_default
+
+    # 回退：查找 extractYYYY_*.csv（优先 data/ 目录，其次仓库根目录）
+    def find_extract(year: int):
+        patterns = [
+            os.path.join("data", f"extract{year}_*.csv"),
+            f"extract{year}_*.csv",
+        ]
+        for pat in patterns:
+            matches = sorted(glob.glob(pat))
+            if matches:
+                return matches[-1]  # 选最新版本
+        return None
+
+    train_candidates = [find_extract(2019), find_extract(2020), find_extract(2021)]
+    test_candidate = find_extract(2022)
+
+    if all(m is not None for m in train_candidates) and test_candidate is not None:
+        print("\n⚠ 未找到标准命名数据文件，已回退使用 extractYYYY_*.csv：")
+        for p in train_candidates:
+            print(f"  训练: {p}")
+        print(f"  测试: {test_candidate}")
+        return train_candidates, [test_candidate]
+
+    # 两者都找不到，提示用户
+    missing = train_default + test_default
+    raise FileNotFoundError(
+        "未找到产量数据文件。请按照以下任一方式准备数据：\n"
+        "1) 将数据放在 data/ 目录，命名为：2019产量数据.csv, 2020产量数据.csv, 2021产量数据.csv, 2022产量数据.csv\n"
+        "2) 或者将提取文件放在仓库根目录或 data/ 下，命名为：extract2019_*.csv, extract2020_*.csv, extract2021_*.csv, extract2022_*.csv\n"
+        f"当前缺失: {', '.join(missing)}"
+    )
 
 
 def train_model(model, train_loader, test_loader, yield_mean, yield_std, 
@@ -160,13 +210,8 @@ def run_comparison_experiment(input_steps_list=[6, 12, 18, 24, 30, 36], epochs=5
     print("对比实验: 语言模态 vs 双模态产量预测")
     print("="*80)
     
-    # 数据路径
-    train_files = [
-        "data/2019产量数据.csv",
-        "data/2020产量数据.csv",
-        "data/2021产量数据.csv"
-    ]
-    test_files = ["data/2022产量数据.csv"]
+    # 数据路径（带自动回退）
+    train_files, test_files = _resolve_data_paths()
     selected_bands = ['NIR', 'RVI', 'SWIR1', 'blue', 'evi', 'ndvi', 'red']
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
     

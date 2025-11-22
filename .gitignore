@@ -45,6 +45,10 @@ logs/
 *.h5
 *.hdf5
 
+# Image caches (all cached images, too large for GitHub)
+data/image_cache/
+data/multiscale_image_cache/
+
 # Predictions
 predictions/
 

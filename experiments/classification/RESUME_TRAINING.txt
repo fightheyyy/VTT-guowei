@@ -1,0 +1,53 @@
+====================================
+断点续训使用说明
+====================================
+
+【功能说明】
+训练过程中可以随时中断（Ctrl+C），下次继续训练时可以从中断处恢复。
+
+【自动保存】
+每个epoch结束后会自动保存两个checkpoint：
+1. best_model.pth     - 验证集F1最高的模型
+2. latest_checkpoint.pth - 最新的训练状态（用于恢复）
+
+【如何中断训练】
+- 在PowerShell/CMD中按 Ctrl+C 即可中断
+- 或直接关闭终端窗口
+- 当前epoch完成后的状态会被保存
+
+【如何恢复训练】
+
+方法1: 使用批处理脚本（推荐）
+   1. 运行 run_12steps.bat
+   2. 选择 [2] 双模态训练
+   3. 当询问"是否从上次中断处继续训练"时，输入 y
+
+方法2: 命令行
+   cd experiments/classification
+   python train_12steps_dual_cached.py --resume
+
+【恢复时会自动】
+- 找到最新的训练目录（timesclip_12steps_dual_YYYYMMDD_HHMMSS）
+- 加载模型权重
+- 加载优化器状态
+- 加载学习率调度器状态
+- 从中断的epoch继续
+
+【注意事项】
+1. 如果要全新开始训练，不要加 --resume 参数
+2. 恢复训练会使用原来的训练目录
+3. 如果找不到checkpoint，会自动开始新训练
+4. 最佳模型(best_model.pth)始终保留，不会被覆盖
+
+【示例场景】
+场景1: 训练到Epoch 15，电脑需要关机
+  - 直接关闭终端即可
+  - 重启后运行: python train_12steps_dual_cached.py --resume
+  - 自动从Epoch 16继续
+
+场景2: 发现效果不好，想重新训练
+  - 运行: python train_12steps_dual_cached.py
+  - （不加--resume，会创建新的时间戳目录）
+
+====================================
+
